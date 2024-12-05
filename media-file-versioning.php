@@ -54,9 +54,18 @@ add_action( 'add_meta_boxes', 'media_versioning_add_meta_box' );
  * @since  1.0.0
  * @return void
  */
+/**
+ * Meta box callback to display the versioning UI.
+ *
+ * @param WP_Post $post The current post object.
+ * 
+ * @since  1.0.0
+ * @return void
+ */
 function media_versioning_meta_box_callback( $post ) {
-    $versions    = get_post_meta( $post->ID, '_media_versions', true ) ?: [];
-    $current_url = wp_get_attachment_url( $post->ID );
+    $versions          = get_post_meta( $post->ID, '_media_versions', true ) ?: [];
+    $current_url       = wp_get_attachment_url( $post->ID );
+    $current_file_path = get_attached_file( $post->ID );
 
     echo '<p>' . esc_html__( 'Upload a new version or view previous versions below:', 'media-file-versioning' ) . '</p>';
 
@@ -71,28 +80,34 @@ function media_versioning_meta_box_callback( $post ) {
 
     // Add the current file as "Current Version."
     echo '<li>';
-    echo '<strong>' . esc_html__( 'Current Version', 'media-file-versioning' ) . ':</strong> ';
+    echo '<strong>' . esc_html__( 'Current Version', 'media-file-versioning' ) . '</strong><br /><br />';
     printf(
-        '<a href="%s" target="_blank">%s</a> (%s)',
+        '<a href="%s" target="_blank">%s</a><br />(%s)',
         esc_url( $current_url ),
         esc_html( basename( $current_url ) ),
-        esc_html( date( 'Y-m-d H:i:s', filemtime( get_attached_file( $post->ID ) ) ) )
+        esc_html( wp_date( 'Y-m-d g:i:s A', filemtime( $current_file_path ) ) )
     );
     echo '</li>';
 
-    // Add all previous versions.
+    // Add all previous versions under one heading.
     if ( ! empty( $versions ) ) {
+        $versions = array_reverse( $versions );
+
+        echo '<div class="mfv-previous-versions">';
+        echo '<h4>' . esc_html__( 'Previous Versions', 'media-file-versioning' ) . '</h4>';
+        echo '<ul>';
         foreach ( $versions as $version ) {
             echo '<li>';
-            echo '<strong>' . esc_html__( 'Previous Version', 'media-file-versioning' ) . ':</strong> ';
             printf(
-                '<a href="%s" target="_blank">%s</a> (%s)',
+                '<a href="%s" target="_blank">%s</a><br />(%s)',
                 esc_url( $version['url'] ),
                 esc_html( basename( $version['url'] ) ),
-                esc_html( date( 'Y-m-d H:i:s', $version['time'] ) )
+                esc_html( wp_date( 'Y-m-d g:i:s A', $version['time'] ) )
             );
             echo '</li>';
         }
+        echo '</ul>';
+        echo '</div>';
     }
 
     echo '</ul>';
@@ -112,7 +127,7 @@ function media_versioning_upload_handler() {
         wp_send_json_error( [ 'message' => esc_html__( 'Permission denied.', 'media-file-versioning' ) ] );
     }
 
-    $file          = $_FILES['file'];
+    $file = $_FILES['file'];
     $attachment_id = isset( $_POST['attachment_id'] ) ? intval( $_POST['attachment_id'] ) : 0;
 
     if ( $file['error'] !== UPLOAD_ERR_OK ) {
@@ -126,10 +141,10 @@ function media_versioning_upload_handler() {
     }
 
     $current_file_path = get_attached_file( $attachment_id );
-    $current_url       = wp_get_attachment_url( $attachment_id );
+    $current_url = wp_get_attachment_url( $attachment_id );
 
     if ( file_exists( $current_file_path ) ) {
-        $path_info          = pathinfo( $current_file_path );
+        $path_info = pathinfo( $current_file_path );
         $versioned_filename = sprintf(
             '%s/%s-%s.%s',
             $path_info['dirname'],
@@ -142,7 +157,7 @@ function media_versioning_upload_handler() {
 
         $versioned_url = str_replace( basename( $current_url ), basename( $versioned_filename ), $current_url );
 
-        $versions   = get_post_meta( $attachment_id, '_media_versions', true ) ?: [];
+        $versions = get_post_meta( $attachment_id, '_media_versions', true ) ?: [];
         $versions[] = [
             'url'  => $versioned_url,
             'time' => time(),
@@ -155,7 +170,7 @@ function media_versioning_upload_handler() {
     copy( $new_file_path, $current_file_path );
     update_attached_file( $attachment_id, $current_file_path );
 
-    $filetype        = wp_check_filetype( $new_file_path );
+    $filetype = wp_check_filetype( $new_file_path );
     $attachment_data = [
         'ID'             => $attachment_id,
         'post_mime_type' => $filetype['type'],
@@ -163,13 +178,23 @@ function media_versioning_upload_handler() {
     ];
     wp_update_post( $attachment_data );
 
+    $versions = get_post_meta( $attachment_id, '_media_versions', true ) ?: [];
+    $versions = array_reverse( $versions );
+    $versions = array_map(
+        function ( $version ) {
+            $version['time_formatted'] = wp_date( 'Y-m-d g:i:s A', $version['time'] );
+            return $version;
+        },
+        $versions
+    );
+
     wp_send_json_success( [
         'current_file' => [
             'url'  => wp_get_attachment_url( $attachment_id ),
             'name' => basename( wp_get_attachment_url( $attachment_id ) ),
-            'time' => filemtime( get_attached_file( $attachment_id ) ),
+            'time' => wp_date( 'Y-m-d g:i:s A', filemtime( get_attached_file( $attachment_id ) ) ),
         ],
-        'versions' => get_post_meta( $attachment_id, '_media_versions', true ),
+        'versions' => $versions,
     ] );
 }
 add_action( 'wp_ajax_media_versioning_upload', 'media_versioning_upload_handler' );
@@ -207,3 +232,79 @@ function media_versioning_enqueue_scripts( $hook ) {
     );
 }
 add_action( 'admin_enqueue_scripts', 'media_versioning_enqueue_scripts' );
+
+/**
+ * Shortcode to display the current and previous versions of a media file.
+ *
+ * Usage: [mfv id="123"]
+ *
+ * @param array $atts Shortcode attributes.
+ * @since 1.0.0
+ * @return string HTML output of the versions list.
+ */
+function mfv_shortcode_handler( $atts ) {
+    // Extract shortcode attributes.
+    $atts = shortcode_atts( [
+        'id' => 0,
+    ], $atts );
+
+    $attachment_id = intval( $atts['id'] );
+
+    // Validate the attachment ID.
+    if ( $attachment_id <= 0 || get_post_type( $attachment_id ) !== 'attachment' ) {
+        return '<div class="mfv-message error">' . esc_html__( 'Invalid or missing media ID.', 'media-file-versioning' ) . '</div>';
+    }
+
+    // Get the current version.
+    $current_url = wp_get_attachment_url( $attachment_id );
+    $current_file_path = get_attached_file( $attachment_id );
+
+    // Get the previous versions.
+    $versions = get_post_meta( $attachment_id, '_media_versions', true ) ?: [];
+    if ( ! empty( $versions ) ) {
+        $versions = array_reverse( $versions ); // Reverse the order to show most recent first.
+    }
+
+    // Start building the output.
+    ob_start();
+
+    echo '<div class="mfv-versions-wrapper">';
+    echo '<div class="mfv-current-version">';
+    echo '<h4>' . esc_html__( 'Current Version', 'media-file-versioning' ) . '</h4>';
+
+    if ( $current_url && file_exists( $current_file_path ) ) {
+        printf(
+            '<p><a href="%s" class="mfv-link current" target="_blank">%s</a> <span class="mfv-date">(%s)</span></p>',
+            esc_url( $current_url ),
+            esc_html( basename( $current_url ) ),
+            esc_html( wp_date( 'Y-m-d g:i:s A', filemtime( $current_file_path ) ) )
+        );
+    } else {
+        echo '<p>' . esc_html__( 'No current version available.', 'media-file-versioning' ) . '</p>';
+    }
+    echo '</div>';
+
+    echo '<div class="mfv-previous-versions">';
+    echo '<h4>' . esc_html__( 'Previous Versions', 'media-file-versioning' ) . '</h4>';
+    if ( ! empty( $versions ) ) {
+        echo '<ul>';
+        foreach ( $versions as $version ) {
+            echo '<li>';
+            printf(
+                '<a href="%s" class="mfv-link previous" target="_blank">%s</a> <span class="mfv-date">(%s)</span>',
+                esc_url( $version['url'] ),
+                esc_html( basename( $version['url'] ) ),
+                esc_html( wp_date( 'Y-m-d g:i:s A', $version['time'] ) )
+            );
+            echo '</li>';
+        }
+        echo '</ul>';
+    } else {
+        echo '<p>' . esc_html__( 'No previous versions available.', 'media-file-versioning' ) . '</p>';
+    }
+    echo '</div>';
+    echo '</div>';
+
+    return ob_get_clean();
+}
+add_shortcode( 'mfv', 'mfv_shortcode_handler' );

@@ -1,0 +1,63 @@
+.mfv-versions-wrapper {
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f9f9f9;
+    max-width: 600px;
+    margin: 20px auto;
+    font-family: Arial, sans-serif;
+}
+
+.mfv-current-version,
+.mfv-previous-versions {
+    margin-bottom: 20px;
+}
+
+.mfv-current-version h4 {
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.mfv-previous-versions h4 {
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.mfv-previous-versions ul {
+    margin: 0 0 0 24px;
+    padding: 0;
+}
+
+.mfv-link {
+    font-weight: bold;
+    text-decoration: none;
+    color: #333;
+}
+
+.mfv-link.current {
+    color: #0073aa;
+    font-size: 1.1rem;
+}
+
+.mfv-link.previous {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.mfv-date {
+    font-size: 0.85rem;
+    color: #777;
+    margin-left: 8px;
+}
+
+.mfv-message.error {
+    color: #d9534f;
+    font-weight: bold;
+    padding: 10px;
+    border: 1px solid #d9534f;
+    border-radius: 5px;
+    background: #f2dede;
+    margin: 20px 0;
+}

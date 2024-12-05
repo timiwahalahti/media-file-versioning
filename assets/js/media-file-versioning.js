@@ -42,19 +42,19 @@ jQuery(document).ready(function ($) {
                             <strong>Current Version:</strong> 
                             <a href="${currentFile.url}" target="_blank">
                                 ${currentFile.name}
-                            </a> (${new Date(currentFile.time * 1000).toLocaleString()})
+                            </a> (${currentFile.time})
                         </li>`;
                     list.append(currentItem);
 
-                    // Add all previous versions
+                    // Add all previous versions (most recent first)
                     if (response.data.versions.length > 0) {
-                        response.data.versions.forEach(function (version) {
+                        response.data.versions.reverse().forEach(function (version) {
                             const listItem = `
                                 <li>
                                     <strong>Previous Version:</strong> 
                                     <a href="${version.url}" target="_blank">
                                         ${version.url.split('/').pop()}
-                                    </a> (${new Date(version.time * 1000).toLocaleString()})
+                                    </a> (${version.time_formatted})
                                 </li>`;
                             list.append(listItem);
                         });

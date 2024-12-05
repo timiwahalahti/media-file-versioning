@@ -12,7 +12,7 @@
 
 #media_version_upload_wrapper input[type="file"] {
     flex-grow: 1;
-    max-width: 70%;
+    max-width: 100%;
     font-size: 14px;
 }
 
@@ -25,6 +25,7 @@
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    width: 100%;
 }
 
 #media_version_upload_btn:hover {

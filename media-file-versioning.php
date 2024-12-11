@@ -184,6 +184,7 @@ function media_versioning_upload_handler() {
     $versions = array_reverse( $versions );
     $versions = array_map(
         function ( $version ) {
+            $date_time_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
             $version['time_formatted'] = wp_date( $date_time_format, $version['time'] );
             return $version;
         },

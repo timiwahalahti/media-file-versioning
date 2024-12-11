@@ -155,6 +155,14 @@ function media_versioning_upload_handler() {
             $path_info['extension']
         );
 
+        $versioned_filename = apply_filters(
+          'media_file_versioning_versioned_filename',
+          $versioned_filename,
+          $current_file_path,
+          $path_info,
+          $attachment_id
+        );
+
         rename( $current_file_path, $versioned_filename );
 
         $versioned_url = str_replace( basename( $current_url ), basename( $versioned_filename ), $current_url );
